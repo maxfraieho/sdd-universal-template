@@ -1,0 +1,22 @@
+---
+name: sdd-refactor
+description: Guide and execute the SDD Refactoring / Performance workflow (Template 3) for {{ project_name }} — benchmark before and after, no public-contract breaks.
+---
+
+# SDD Refactor Skill
+
+When activated for a refactor/optimization task:
+
+1. Read `docs/for-agents/sdd-development-methodology.md`, section "ШАБЛОН 3" (Refactoring & Performance), and follow it literally.
+2. Never change a public function signature that has callers in other modules{% if code_intelligence != "none" %} — verify via {{ code_intelligence }} impact analysis first{% endif %}.
+3. Benchmark BEFORE: measure current latency distribution (min/median/p95/max) over 20 consecutive calls.
+{%- if code_intelligence != "none" %}
+4. Check all callers via {{ code_intelligence }}, then apply the optimization.
+{%- else %}
+4. Apply the optimization.
+{%- endif %}
+5. Benchmark AFTER: same measurement, produce a before/after comparison table.
+{%- if test_command %}
+6. Run `{{ test_command }}` to confirm no regression.
+{%- endif %}
+7. Final report must state: benchmark table{% if code_intelligence != "none" %}, impact-analysis output{% endif %}, and whether `bash bin/sdd_verify.sh` passed.
