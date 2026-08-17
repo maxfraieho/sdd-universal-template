@@ -1,0 +1,174 @@
+_subdirectory: template
+_templates_suffix: ".jinja"
+_answers_file: .copier-answers.yml
+_min_copier_version: "9.0.0"
+
+_exclude:
+  - ".git"
+  - "__pycache__"
+  - "*.pyc"
+  - ".copier-answers.yml"
+
+_skip_if_exists:
+  - ".specify/constitution.md"
+  - ".specify/feature.json"
+  - ".specify/sdd_judge.env"
+  - "AGENTS.md"
+
+_tasks:
+  - "git init -b {{ primary_branch }} 2>/dev/null || true"
+  - "git config core.hooksPath .githooks"
+  - "chmod +x bin/sdd_verify.sh .githooks/pre-commit scripts/sdd_llm_judge.py 2>/dev/null || true"
+
+project_name:
+  type: str
+  help: "Human-readable project name"
+
+project_slug:
+  type: str
+  help: "Machine-safe slug (used in secrets dir default, urn identifiers)"
+  default: "{{ project_name|lower|replace(' ', '-') }}"
+
+doc_language:
+  type: str
+  help: "Language for generated docs and skill/command text"
+  choices:
+    Ukrainian: uk
+    English: en
+  default: uk
+
+primary_language:
+  type: str
+  help: "Primary implementation language of this project"
+  choices:
+    - python
+    - typescript
+    - go
+    - rust
+    - mixed
+
+database_engine:
+  type: str
+  help: "Primary datastore, if any"
+  choices:
+    - SQLite
+    - PostgreSQL
+    - MySQL
+    - MongoDB
+    - none
+  default: none
+
+database_operational_mode:
+  type: str
+  help: "Operational mode/setting the constitution should mandate for the datastore (e.g. 'WAL + busy_timeout=5000'). Leave blank if not applicable."
+  default: ""
+  when: "{{ database_engine != 'none' }}"
+
+latency_budget_ms:
+  type: int
+  help: "Hot-path latency budget in milliseconds. Set to 0 to disable the hot-path invariant entirely."
+  default: 0
+
+hot_path_symbols:
+  type: str
+  help: "Comma-separated list of functions/modules that MUST stay on the hot path (empty if latency_budget_ms is 0)"
+  default: ""
+  when: "{{ latency_budget_ms > 0 }}"
+
+source_of_truth_module:
+  type: str
+  help: "Module/file that is the canonical source of truth for domain state (e.g. a rules engine, a state store). Leave blank if not applicable."
+  default: ""
+
+promotion_gate_n:
+  type: int
+  help: "Minimum independent confirmations required before auto-promoting a shadow rule/heuristic to active (0 disables this invariant)"
+  default: 0
+
+enable_hitl_precedence:
+  type: bool
+  help: "Does a human operator's manual override always take precedence over model output in this project?"
+  default: false
+
+enable_pii_policy:
+  type: bool
+  help: "Enforce a PII/secrets policy (nothing sensitive committed to git, secrets live outside the repo)?"
+  default: true
+
+secrets_dir:
+  type: str
+  help: "Directory (outside git) where secrets/credentials live"
+  default: "~/.{{ project_slug }}-secrets"
+  when: "{{ enable_pii_policy }}"
+
+pii_exclude_globs:
+  type: str
+  help: "Comma-separated glob patterns excluded from the LLM arbiter's diff (never sent off-device)"
+  default: "*.txt,credentials.json,*.db,*.secret"
+  when: "{{ enable_pii_policy }}"
+
+protected_branch:
+  type: str
+  help: "Branch that must NEVER receive direct pushes from a dev/CI host (all changes go through a review pipeline). Leave blank to disable this invariant."
+  default: ""
+
+primary_branch:
+  type: str
+  help: "Default working branch"
+  default: main
+
+code_intelligence:
+  type: str
+  help: "Code intelligence / impact-analysis backend, if any"
+  choices:
+    - gitnexus
+    - none
+  default: none
+
+code_intelligence_url:
+  type: str
+  help: "URL of the code intelligence backend"
+  default: ""
+  when: "{{ code_intelligence != 'none' }}"
+
+target_agents:
+  type: str
+  help: "Which coding agents will use this SDD setup? (comma-separated: claude, codex, agy, copilot, cursor-agent, gemini)"
+  default: "claude,codex,agy"
+
+enable_llm_arbiter:
+  type: bool
+  help: "Deploy the fail-open LLM pre-commit arbiter (scripts/sdd_llm_judge.py)?"
+  default: true
+
+arbiter_mode:
+  type: str
+  help: "Arbiter mode on first install — 'shadow' logs verdicts without blocking, 'blocking' enforces FAIL immediately"
+  choices:
+    - shadow
+    - blocking
+  default: shadow
+  when: "{{ enable_llm_arbiter }}"
+
+judge_url:
+  type: str
+  help: "OpenAI-compatible endpoint for the LLM arbiter (leave blank — configure later in .specify/sdd_judge.env, never commit a real endpoint to the template)"
+  default: ""
+  when: "{{ enable_llm_arbiter }}"
+
+judge_model:
+  type: str
+  help: "Model/slot name for the LLM arbiter"
+  default: ""
+  when: "{{ enable_llm_arbiter }}"
+
+test_command:
+  type: str
+  help: "Command that runs this project's test suite"
+  default: "python3 -m pytest tests/"
+  when: "{{ primary_language == 'python' }}"
+
+extra_verify_script:
+  type: str
+  help: "Optional extra script bin/sdd_verify.sh should call at the end of a default (non-gate) run, e.g. bin/ui_verify.sh. Leave blank to skip."
+  default: ""

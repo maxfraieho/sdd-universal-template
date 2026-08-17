@@ -1,0 +1,70 @@
+name: Template Smoke Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Generate a throwaway project from this template
+        run: |
+          cat > /tmp/answers.yml <<'EOF'
+          project_name: smoke-test-project
+          primary_language: python
+          database_engine: none
+          latency_budget_ms: 0
+          promotion_gate_n: 0
+          enable_hitl_precedence: false
+          enable_pii_policy: true
+          protected_branch: ""
+          primary_branch: main
+          code_intelligence: none
+          target_agents: claude,codex
+          enable_llm_arbiter: true
+          arbiter_mode: shadow
+          test_command: "python3 -m pytest tests/"
+          extra_verify_script: ""
+          EOF
+          uvx copier copy --trust --data-file /tmp/answers.yml . /tmp/sdd-smoke
+
+      - name: Add a minimal example spec (fresh project has empty specs/)
+        run: |
+          mkdir -p /tmp/sdd-smoke/specs/000-example
+          echo "# Example" > /tmp/sdd-smoke/specs/000-example/spec.md
+
+      - name: Run sdd_verify.sh (default mode)
+        run: bash /tmp/sdd-smoke/bin/sdd_verify.sh
+
+      - name: Run sdd_verify.sh --gate (expect controlled failure, no feature.json target set)
+        run: |
+          bash /tmp/sdd-smoke/bin/sdd_verify.sh --gate; code=$?
+          echo "exit code: $code (non-zero is expected — no active feature configured in the smoke project)"
+
+      - name: Validate all generated Markdown frontmatter parses
+        run: |
+          python3 -c "
+          import pathlib, yaml, sys
+          root = pathlib.Path('/tmp/sdd-smoke')
+          bad = []
+          for p in list(root.glob('.agents/skills/*/SKILL.md')) + list(root.glob('.claude/commands/sdd/*.md')) + list(root.glob('.codex/prompts/*.md')):
+              text = p.read_text()
+              if not text.startswith('---'):
+                  bad.append(str(p)); continue
+              fm = text.split('---', 2)[1]
+              try:
+                  yaml.safe_load(fm)
+              except Exception as e:
+                  bad.append(f'{p}: {e}')
+          if bad:
+              print('Invalid frontmatter:', bad); sys.exit(1)
+          print('All frontmatter valid.')
+          "
