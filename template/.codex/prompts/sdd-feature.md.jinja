@@ -1,0 +1,10 @@
+---
+description: Execute SDD Feature Workflow (Template 1) for {{ project_name }}
+---
+
+Ціль: $ARGUMENTS
+
+1. Прочитай `.agents/skills/sdd-feature/SKILL.md` і виконай його буквально.
+2. Інваріанти: `.specify/constitution.md`. MUST-правила: `AGENTS.md`.
+3. Номер `specs/` визначай через `ls specs/` — не з пам'яті.
+4. Фінальний звіт: створені файли{% if code_intelligence != "none" %}, impact-аналіз{% endif %}{% if test_command %}, `{{ test_command }}`{% endif %}, `bash bin/sdd_verify.sh`.

@@ -1,0 +1,24 @@
+---
+description: SDD Шаблон 5 — HITL навчання агента.{% if promotion_gate_n > 0 %} Формалізація shadow-правила, промоція через N >= {{ promotion_gate_n }}.{% endif %}
+argument-hint: <профіль/контекст> <host> — короткий опис корекції оператора
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob
+---
+
+{%- if not enable_hitl_precedence %}
+> **Увага:** `enable_hitl_precedence: false` для цього проєкту. Ця команда
+> застосовна лише якщо в проєкті є HITL-цикл корекцій. Якщо його нема —
+> видали цю команду.
+{%- endif %}
+
+Виконай Шаблон 5 ("🎓 Навчання Агента та Формалізація Правил") з `docs/for-agents/sdd-development-methodology.md` для задачі: $ARGUMENTS
+
+1. Прочитай `docs/for-agents/sdd-development-methodology.md`, розділ "ШАБЛОН 5", і виконай його крок за кроком.
+2. Вибір оператора має 100% пріоритет над передбаченнями моделі.
+3. Нове правило записується виключно зі статусом `shadow` — ніколи одразу `active`.
+{%- if promotion_gate_n > 0 %}
+4. Промоція — лише після N >= {{ promotion_gate_n }} незалежних підтверджених прогонів, ніколи вручну.
+{%- endif %}
+{%- if latency_budget_ms > 0 %}
+5. Виклики читання правил на гарячому шляху ({{ hot_path_symbols }}) залишаються неблокуючими (< {{ latency_budget_ms }}мс) — перевір, що зміна цього не порушує.
+{%- endif %}
+6. У звіті: створене shadow-правило, юніт-тест каскаду пріоритетів, поточний стан промоції.

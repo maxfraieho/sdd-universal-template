@@ -1,0 +1,15 @@
+---
+description: SDD Шаблон 2 — виправлення бага. Ізоляція, RED-тест відтворення, фікс, GREEN підтвердження.
+argument-hint: <опис проблеми>
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob
+---
+
+Виконай Шаблон 2 ("🐛 Виправлення Бага") з `docs/for-agents/sdd-development-methodology.md` для: $ARGUMENTS
+
+1. Прочитай `docs/for-agents/sdd-development-methodology.md`, розділ "ШАБЛОН 2", і виконай його крок за кроком.
+2. Спочатку знайди першопричину в коді, цитуй точний `файл:рядок`. Жодних вигаданих маскувань через порожні `try/except: pass`.
+3. Створи тест, що моделює баг. {% if test_command %}Прожени `{{ test_command }}` — тест МУСИТЬ впасти (RED) ДО внесення правок.{% endif %}
+{%- if code_intelligence != "none" %}
+4. Перевір зону ураження зміненого символу через {{ code_intelligence }}.
+{%- endif %}
+5. Внеси точкову правку. Переконайся, що регресійний тест стає GREEN, а решта тестів продовжують проходити.

@@ -1,0 +1,29 @@
+## Always Do
+
+- **MUST follow SDD Workflow (Spec First, Code Second).** For EVERY new feature, endpoint, or component, first read `.agents/skills/sdd-workflow/SKILL.md` and create `specs/<feature>/spec.md`, `plan.md`, and `tasks.md` BEFORE modifying implementation code.
+- **MUST read `.specify/feature.json` + `git log -n 1 --stat` before starting SDD work.** This is the Handoff Protocol that keeps multiple agents (Claude Code, Codex CLI, AGY, ...) from drifting on the same feature. If `.specify/feature.json`'s `branch` field does not match the currently checked-out branch, STOP and tell the operator — do not guess which feature is active from memory.
+- **MUST update `.specify/feature.json`'s `phase`/`phases_done`/`updated_at` on every SDD phase transition** (specify → clarify → plan → tasks → implement → verify), committing that update as its own atomic commit (`spec:`, `plan:`, `tasks:`, `impl:` prefix) — not bundled silently into an unrelated commit.
+- **MUST run `bash bin/sdd_verify.sh --gate` before being allowed to modify implementation code for the active feature.** It validates the artifacts required for the current `phase` exist. This is the L3 Validator Gate.
+{%- if code_intelligence != "none" %}
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, check its callers via {{ code_intelligence }} and report the blast radius before proceeding.
+{%- endif %}
+- When exploring unfamiliar code, prefer semantic/structural search over grepping where a code-intelligence tool is available.
+
+## Never Do
+
+- NEVER write or edit feature code without an active specification document in `specs/<feature>/spec.md`.
+{%- if protected_branch %}
+- NEVER push directly to `{{ protected_branch }}`{% if primary_branch != protected_branch %} from a dev/CI host — all changes go through the review/build/test pipeline{% endif %}.
+{%- endif %}
+- NEVER commit changes without running `bash bin/sdd_verify.sh --gate` first.
+- NEVER rename symbols with plain find-and-replace if a code-intelligence tool with call-graph awareness is available — use that instead.
+
+## Resources
+
+| Resource | Use for |
+|---|---|
+| `.specify/constitution.md` | Non-negotiable project invariants |
+| `docs/for-agents/sdd-development-methodology.md` | 9 SDD task templates, the canonical "how" |
+| `.specify/feature.json` | Which feature is active, on which branch, at which phase |
+| `bin/sdd_verify.sh --gate` | L3 Validator Gate — what's missing for the current phase |
+| `specs/<NNN-slug>/` | Artifacts (spec/plan/tasks/clarify) for a specific feature |
