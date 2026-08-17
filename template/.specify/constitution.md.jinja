@@ -1,0 +1,93 @@
+# Конституція проєкту `{{ project_name }}` (Project Constitution)
+
+> **Версія:** 1.0.0
+> **Статус:** Дійсний інваріант розробки
+> **Методологія:** Spec-Driven Development (SDD) via GitHub Spec Kit (`specify-cli`)
+
+---
+
+## 1. Технологічний стек та інфраструктура
+
+1. **Основна мова:** {{ primary_language }}.
+{%- if database_engine != "none" %}
+2. **Персистентна пам'ять:** {{ database_engine }}{% if database_operational_mode %} — **ОБОВ'ЯЗКОВИЙ РЕЖИМ:** {{ database_operational_mode }}{% endif %}.
+{%- endif %}
+{%- if code_intelligence != "none" %}
+3. **Аналіз архітектури та коду:** {{ code_intelligence }}{% if code_intelligence_url %} (`{{ code_intelligence_url }}`){% endif %}.
+{%- endif %}
+
+<!-- Заповни секцію 1 фактами свого стеку: фреймворк, UI, AI-моделі якщо є.
+     Це НЕ generic-секція — редагуй прямо тут, без шаблонних токенів. -->
+
+---
+
+## 2. Фундаментальні інваріанти розробки та безпеки
+
+{%- if enable_pii_policy %}
+
+### 🔒 Інваріант — Політика PII та конфіденційності
+- Жодні персональні дані, секрети чи облікові дані **НЕ МОЖУТЬ бути закомічені у Git-репозиторій**.
+- Усі конфіденційні файли зберігаються виключно в `{{ secrets_dir }}`.
+- LLM-арбітр (якщо увімкнений) НЕ надсилає diff по шляхах: `{{ pii_exclude_globs }}`.
+{%- endif %}
+
+{%- if latency_budget_ms > 0 %}
+
+### 🧠 Інваріант — Захист гарячого шляху (Hot Path < {{ latency_budget_ms }}ms)
+- Наступні символи МУСЯТЬ залишатися легкими, синхронними, без важких мережевих/дискових операцій: {{ hot_path_symbols }}.
+- Виклики в гарячому шляху МУСЯТЬ виконуватись швидше {{ latency_budget_ms }}мс.
+- Важкі задачі (генерація specs, мережеві запити, аудити) виконуються асинхронно, поза гарячим шляхом.
+{%- endif %}
+
+{%- if enable_hitl_precedence %}
+
+### 👑 Інваріант — Пріоритет рішення оператора-людини (HITL Precedence)
+- Ручні корекції/оверрайди людини-оператора мають **100% пріоритет** над висновками будь-якої моделі.
+{%- endif %}
+
+{%- if promotion_gate_n > 0 %}
+
+### 🛡️ Інваріант — Контроль промоції правил (N ≥ {{ promotion_gate_n }})
+- Автоматична промоція теневих (shadow) правил/евристик у статус `active` вимагає підтвердження у **N ≥ {{ promotion_gate_n }} незалежних прогонах**.
+{%- if source_of_truth_module %}
+- Джерело правди: `{{ source_of_truth_module }}`.
+{%- endif %}
+{%- endif %}
+
+{%- if protected_branch %}
+
+### 🚫 Інваріант — Заборона прямих пушів у `{{ protected_branch }}`
+- Прямий push у гілку `{{ protected_branch }}` з dev/CI-хостів суворо заборонений. Усі зміни проходять через review/build/test пайплайн.
+{%- endif %}
+
+<!-- Додай сюди свої власні project-specific інваріанти. Кожен інваріант —
+     це правило, яке жоден агент не може порушити незалежно від того, як
+     саме його покликано (Claude/Codex/AGY/native Spec Kit). -->
+
+---
+
+## 3. Правила SDD Workflow (`specify-cli`)
+
+> Три шари, не плутати: **конституція** (цей файл) = інваріанти.
+> **Методологія** (`docs/for-agents/sdd-development-methodology.md`) = процедура.
+> **Native-команди / project-команди / скіли** = лише транспорт виклику.
+> За конфліктом між шарами виграє конституція.
+
+| Фаза SDD | Native primitive (Spec Kit Agent Skill) | Project command | Спільний скіл |
+|---|---|---|---|
+| Specify | `speckit-specify` | `/sdd:feature` | `.agents/skills/sdd-feature` |
+| Clarify | `speckit-clarify` | `/sdd:clarify` | `.agents/skills/speckit-clarify` |
+| Plan | `speckit-plan` | (у складі шаблонів) | `.agents/skills/speckit-plan` |
+| Tasks | `speckit-tasks` | (у складі шаблонів) | `.agents/skills/speckit-tasks` |
+| Implement | `speckit-implement` | `/sdd:{bugfix,refactor,integration,teaching}` | `.agents/skills/sdd-*` |
+| Verify | — | `/sdd:verify` | `bin/sdd_verify.sh` |
+
+Native Spec Kit механізм — це **Agent Skills** (frontmatter `name`+`description`, семантична активація), НЕ буквальні slash-команди. Встановлюється по одному: `specify integration install <key>` для кожного з `{{ target_agents }}`{% if "," in target_agents %} (окремою командою на кожен ключ — `install` не приймає список){% endif %}.
+
+Усі нові фічі, рефакторинг або зміни API описуються за специфікаційним циклом:
+
+1. `/sdd:feature` (project) або семантична активація `speckit-specify` (native): специфікація у `specs/<feature-name>/spec.md`.
+2. Розробка архітектурного плану{% if code_intelligence != "none" %} з аналізом впливу через {{ code_intelligence }}{% endif %}.
+3. Декомпозиція на атомарні задачі з критеріями приймання (AC).
+4. Послідовне виконання, перевірка після кожного кроку.
+5. `bash bin/sdd_verify.sh --gate` перед комітом.
