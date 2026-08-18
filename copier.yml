@@ -168,6 +168,11 @@ test_command:
   default: "python3 -m pytest tests/"
   when: "{{ primary_language == 'python' }}"
 
+enable_adr:
+  type: bool
+  help: "Adopt Architecture Decision Records (MADR v3.x, docs/adr/) as a layer separate from spec.md — records WHY, not just WHAT/HOW. Recommended (validated 2026-08-18 in vydra-swiss-survey 022-adr-integration, two independent deep-research sources converged on MADR + global numbering + no log4brains-by-default)."
+  default: true
+
 extra_verify_script:
   type: str
   help: "Optional extra script bin/sdd_verify.sh should call at the end of a default (non-gate) run, e.g. bin/ui_verify.sh. Leave blank to skip."
