@@ -47,7 +47,7 @@ jobs:
 
       - name: Run sdd_verify.sh --gate (expect controlled failure, no feature.json target set)
         run: |
-          bash /tmp/sdd-smoke/bin/sdd_verify.sh --gate; code=$?
+          bash /tmp/sdd-smoke/bin/sdd_verify.sh --gate && code=0 || code=$?
           echo "exit code: $code (non-zero is expected — no active feature configured in the smoke project)"
 
       - name: Validate all generated Markdown frontmatter parses
