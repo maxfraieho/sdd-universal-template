@@ -31,10 +31,11 @@ jobs:
           target_agents: claude,codex
           enable_llm_arbiter: true
           arbiter_mode: shadow
+          enable_adr: true
           test_command: "python3 -m pytest tests/"
           extra_verify_script: ""
           EOF
-          uvx copier copy --trust --data-file /tmp/answers.yml . /tmp/sdd-smoke
+          uvx copier copy --trust --defaults --data-file /tmp/answers.yml . /tmp/sdd-smoke
 
       - name: Add a minimal example spec (fresh project has empty specs/)
         run: |
@@ -68,3 +69,46 @@ jobs:
               print('Invalid frontmatter:', bad); sys.exit(1)
           print('All frontmatter valid.')
           "
+
+      - name: enable_adr=true — docs/adr/template.md present, judge script compiles
+        run: |
+          test -f /tmp/sdd-smoke/docs/adr/template.md
+          python3 -m py_compile /tmp/sdd-smoke/scripts/sdd_llm_judge.py
+          echo "OK: enable_adr=true smoke passed"
+
+  smoke-no-adr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Generate with enable_adr=false — must not leave TemplateSyntaxError or leftover Jinja
+        run: |
+          cat > /tmp/answers-no-adr.yml <<'EOF'
+          project_name: smoke-test-project
+          primary_language: python
+          database_engine: none
+          latency_budget_ms: 0
+          promotion_gate_n: 0
+          enable_hitl_precedence: false
+          enable_pii_policy: true
+          protected_branch: ""
+          primary_branch: main
+          code_intelligence: none
+          target_agents: claude,codex
+          enable_llm_arbiter: true
+          arbiter_mode: shadow
+          enable_adr: false
+          test_command: "python3 -m pytest tests/"
+          extra_verify_script: ""
+          EOF
+          uvx copier copy --trust --defaults --data-file /tmp/answers-no-adr.yml . /tmp/sdd-smoke-no-adr
+
+      - name: enable_adr=false — docs/adr/template.md absent, judge script still compiles, no leftover Jinja tokens
+        run: |
+          test ! -f /tmp/sdd-smoke-no-adr/docs/adr/template.md
+          python3 -m py_compile /tmp/sdd-smoke-no-adr/scripts/sdd_llm_judge.py
+          ! grep -RnE '\{%|\{\{ *[a-z_]+ *\}\}' /tmp/sdd-smoke-no-adr/.specify/constitution.md /tmp/sdd-smoke-no-adr/docs/for-agents/sdd-development-methodology.md
+          echo "OK: enable_adr=false smoke passed"
